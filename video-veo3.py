@@ -34,3 +34,49 @@ if not api_key and not API_KEY:
 
 
 
+generate_url = "https://api.aivideoapi.com/runway/generate/video"
+status_url   = "https://api.aivideoapi.com/status"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+payload = {
+    "text_prompt": "A serene mountain landscape at dawn",
+    "model": "gen3",
+    "width": 1280,
+    "height": 768,
+    "seed": 42,
+    "callback_url": "",
+    "time": 5
+}
+
+# Gửi yêu cầu tạo video
+response = requests.post(generate_url, json=payload, headers=headers)
+if response.status_code != 200:
+    print("Lỗi khi tạo video:", response.status_code, response.text)
+else:
+    result = response.json()
+    uuid = result.get("uuid") or result.get("id")
+    print("UUID:", uuid)
+
+    # Poll endpoint để kiểm tra tiến độ
+    while True:
+        time.sleep(3)
+        r2 = requests.get(status_url, params={"uuid": uuid}, headers=headers)
+        if r2.status_code != 200:
+            print("Lỗi khi kiểm tra trạng thái:", r2.status_code, r2.text)
+            break
+
+        status_data = r2.json()
+        status = status_data.get("status")
+        print("Trạng thái:", status)
+        if status == "success":
+            print("Video URL:", status_data.get("video_url"), "GIF URL (nếu có):", status_data.get("gif_url"))
+            break
+        elif status == "failed":
+            print("Job thất bại:", status_data.get("error"), "Code lỗi:", status_data.get("error_code"))
+            break
+        # Nếu là "in queue" hoặc "submitted", tiếp tục đợi
+
